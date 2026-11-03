@@ -1,6 +1,7 @@
 import express from "express";
 import { pool } from "./db.ts";
 import { crudRouter } from "./crud.ts";
+import { performancesRouter } from "./performances.ts";
 
 export const app = express();
 
@@ -10,6 +11,12 @@ app.get("/api/health", async (_req, res) => {
   const { rows } = await pool.query("SELECT NOW()");
   res.json(rows[0]);
 });
+
+// ==========================================================================
+// Read performances
+// ==========================================================================
+
+app.use("/api/performances", performancesRouter());
 
 // ==========================================================================
 // Read teams
