@@ -9,7 +9,7 @@ user **browse, search, and manage** it. Individual work.
 ## The dataset
 
 You are given one flat CSV of football **player match performances** — each row
-is *one player's stats in one match* (player info, match info, and performance
+is _one player's stats in one match_ (player info, match info, and performance
 stats all mixed together).
 
 ## What to build
@@ -47,18 +47,18 @@ the CSV and normalizes it into **3 related tables** — `players`, `matches`, an
    ```
 3. Done — the script prints a row count and leaves you with three tables:
 
-   | table | one row per… | key |
-   |---|---|---|
-   | `players` | player | `player_id` (PK) |
-   | `matches` | match | `match_id` (PK) |
+   | table          | one row per…                      | key                        |
+   | -------------- | --------------------------------- | -------------------------- |
+   | `players`      | player                            | `player_id` (PK)           |
+   | `matches`      | match                             | `match_id` (PK)            |
    | `performances` | player **in** a match (the stats) | FKs → `players`, `matches` |
 
-**Read `setup_db.sql`** and make sure you understand *why* the data is split this
+**Read `setup_db.sql`** and make sure you understand _why_ the data is split this
 way — you'll join across these tables and explain the design in your reflection.
 
 ## Requirements checklist
 
-- [ ] Database set up with `setup_db.sql` (players / matches / performances)
+- [x] Database set up with `setup_db.sql` (players / matches / performances)
 - [ ] Full CRUD
 - [ ] Pagination + rows-per-page selector
 - [ ] Detail page or modal

@@ -1,0 +1,49 @@
+{
+  "name": "player-stats-dashboard",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*"
+  ],
+  "version": "1.0.0",
+  "description": "Build a full-stack app that imports a real dataset into PostgreSQL and lets a user **browse, search, and manage** it. Individual work.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "dev": "npm run --filter '*' dev",
+    "prepare": "husky"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Cornerstone-CICCC/m-0526-web-development-ii-wad-203-midterm-player-stats-dashb-kazi983.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Cornerstone-CICCC/m-0526-web-development-ii-wad-203-midterm-player-stats-dashb-kazi983/issues"
+  },
+  "homepage": "https://github.com/Cornerstone-CICCC/m-0526-web-development-ii-wad-203-midterm-player-stats-dashb-kazi983#readme",
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "eslint": "^10.14.0",
+    "eslint-plugin-astro": "^3.2.1",
+    "eslint-plugin-jsdoc": "^65.4.2",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.6.0",
+    "prettier": "^3.9.10",
+    "prettier-plugin-astro": "^1.1.2",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
+    "typescript-eslint": "^8.72.1"
+  },
+  "lint-staged": {
+    "*.{js,mjs,ts,astro}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,css,yml,yaml}": "prettier --write"
+  }
+}
