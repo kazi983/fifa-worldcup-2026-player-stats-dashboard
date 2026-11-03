@@ -6,6 +6,9 @@ type TableConfig = {
   table: string;
   idColumn: string;
   columns: string[];
+  searchColumns?: string[];
+  filterColumns?: string[];
+  sortColumns?: string[];
 };
 
 /**
@@ -33,7 +36,14 @@ const DEFAULT_LIMIT = 25;
  * @returns Router to mount under `/api/<table>`.
  */
 export function crudRouter(tableConfig: TableConfig) {
-  const { table, idColumn, columns } = tableConfig;
+  const {
+    table,
+    idColumn,
+    columns,
+    searchColumns = [],
+    filterColumns = [],
+    sortColumns = [],
+  } = tableConfig;
   const router = express.Router();
 
   router.get("/", async (req, res) => {
@@ -45,15 +55,43 @@ export function crudRouter(tableConfig: TableConfig) {
     const page = Number.isInteger(pageParam) && pageParam >= 1 ? pageParam : 1;
     const offset = (page - 1) * limit;
 
+    const where: string[] = [];
+    const params: unknown[] = [];
+    if (typeof req.query.q === "string" && searchColumns.length > 0) {
+      params.push(`%${req.query.q}%`);
+      where.push(
+        `(${searchColumns?.map((c) => `${c} ILIKE $${params.length}`).join(" OR ")})`,
+      );
+    }
+
+    for (const column of filterColumns) {
+      const value = req.query[column];
+      if (typeof value === "string") {
+        params.push(value);
+        where.push(`${column} = $${params.length}`);
+      }
+    }
+    const whereSql = where.length > 0 ? `WHERE ${where.join(" AND ")}` : "";
+
+    const sortParam = req.query.sort;
+    const sortColumn =
+      typeof sortParam === "string" && sortColumns.includes(sortParam)
+        ? sortParam
+        : idColumn;
+    const order = req.query.order === "desc" ? "DESC" : "ASC";
+    const orderBySql =
+      sortColumn === idColumn
+        ? `ORDER BY ${idColumn} ${order}`
+        : `ORDER BY ${sortColumn} ${order}, ${idColumn}`;
+
     const [dataResult, countResult] = await Promise.all([
       pool.query(
-        `SELECT * from ${table} ORDER BY ${idColumn} LIMIT $1 OFFSET $2`,
-        [limit, offset],
+        `SELECT * from ${table} ${whereSql} ${orderBySql} LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+        [...params, limit, offset],
       ),
-      pool.query(`SELECT COUNT(*) FROM ${table}`),
+      pool.query(`SELECT COUNT(*) FROM ${table} ${whereSql}`, params),
     ]);
-    console.log("dataResult :>> ", dataResult);
-    console.log("countResult :>> ", countResult);
+
     const total = Number(countResult.rows[0].count);
 
     res.json({

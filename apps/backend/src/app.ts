@@ -38,6 +38,28 @@ app.use(
       "player_of_match_awards",
       "tournament_rating",
     ],
+    searchColumns: ["player_name", "nationality", "team", "club_name"],
+    filterColumns: [
+      "nationality",
+      "team",
+      "jersey_number",
+      "position",
+      "preferred_foot",
+      "club_name",
+    ],
+    sortColumns: [
+      "player_id",
+      "player_name",
+      "age",
+      "height_cm",
+      "weight_kg",
+      "market_value_eur",
+      "total_goals_tournament",
+      "total_assists_tournament",
+      "total_minutes_tournament",
+      "player_of_match_awards",
+      "tournament_rating",
+    ],
   }),
 );
 
