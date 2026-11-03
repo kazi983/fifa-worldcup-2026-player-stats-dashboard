@@ -1,5 +1,5 @@
 import express from "express";
-import { pool } from "./db";
+import { pool } from "./db.ts";
 
 /** Describes one table exposed through the CRUD router. */
 type TableConfig = {
