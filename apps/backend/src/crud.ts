@@ -1,5 +1,6 @@
 import express from "express";
 import { pool } from "./db.ts";
+import { LIMIT_OPTIONS, DEFAULT_LIMIT } from "./constants.ts";
 
 /** Describes one table exposed through the CRUD router. */
 type TableConfig = {
@@ -26,9 +27,6 @@ function pickColumns(body: unknown, columns: string[]) {
   const values = keys.map((key) => data[key]);
   return { keys, values };
 }
-
-const LIMIT_OPTIONS = [10, 25, 50, 100];
-const DEFAULT_LIMIT = 25;
 
 /**
  * Builds list / read / create / update / delete routes for one table.
