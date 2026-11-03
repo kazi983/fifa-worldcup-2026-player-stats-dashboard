@@ -24,6 +24,9 @@ function pickColumns(body: unknown, columns: string[]) {
   return { keys, values };
 }
 
+const LIMIT_OPTIONS = [10, 25, 50, 100];
+const DEFAULT_LIMIT = 25;
+
 /**
  * Builds list / read / create / update / delete routes for one table.
  * @param tableConfig - Table name, primary key and writable columns.
@@ -33,9 +36,33 @@ export function crudRouter(tableConfig: TableConfig) {
   const { table, idColumn, columns } = tableConfig;
   const router = express.Router();
 
-  router.get("/", async (_req, res) => {
-    const { rows } = await pool.query(`SELECT * from ${table}`);
-    res.json(rows);
+  router.get("/", async (req, res) => {
+    const limitParam = Number(req.query.limit);
+    const limit = LIMIT_OPTIONS.includes(limitParam)
+      ? limitParam
+      : DEFAULT_LIMIT;
+    const pageParam = Number(req.query.page);
+    const page = Number.isInteger(pageParam) && pageParam >= 1 ? pageParam : 1;
+    const offset = (page - 1) * limit;
+
+    const [dataResult, countResult] = await Promise.all([
+      pool.query(
+        `SELECT * from ${table} ORDER BY ${idColumn} LIMIT $1 OFFSET $2`,
+        [limit, offset],
+      ),
+      pool.query(`SELECT COUNT(*) FROM ${table}`),
+    ]);
+    console.log("dataResult :>> ", dataResult);
+    console.log("countResult :>> ", countResult);
+    const total = Number(countResult.rows[0].count);
+
+    res.json({
+      data: dataResult.rows,
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    });
   });
 
   router.get("/:id", async (req, res) => {
@@ -59,7 +86,7 @@ export function crudRouter(tableConfig: TableConfig) {
     const placeholders = keys.map((_, i) => `$${i + 1}`);
     const { rows } = await pool.query(
       `INSERT INTO ${table} (${keys.join(", ")}) 
-      VALUES = (${placeholders.join(", ")})
+      VALUES (${placeholders.join(", ")})
       RETURNING *`,
       values,
     );
@@ -74,10 +101,10 @@ export function crudRouter(tableConfig: TableConfig) {
     if (keys.length === 0) {
       return res.status(400).json({ error: "no valid columns in body" });
     }
-    const assignments = keys.map((_, i) => `$${i + 1}`);
+    const assignments = keys.map((key, i) => `${key} = $${i + 1}`);
     const { rows } = await pool.query(
       `UPDATE ${table} 
-      SET (${assignments.join(", ")}) 
+      SET ${assignments.join(", ")} 
       WHERE ${idColumn} = $${keys.length + 1}
       RETURNING *`,
       [...values, req.params.id],
@@ -92,7 +119,7 @@ export function crudRouter(tableConfig: TableConfig) {
 
   router.delete("/:id", async (req, res) => {
     const { rowCount } = await pool.query(
-      `DELETE ${table} WHERE ${idColumn} = $1 `,
+      `DELETE FROM ${table} WHERE ${idColumn} = $1 `,
       [req.params.id],
     );
     if (rowCount === 0) {
