@@ -59,8 +59,8 @@ way — you'll join across these tables and explain the design in your reflectio
 ## Requirements checklist
 
 - [x] Database set up with `setup_db.sql` (players / matches / performances)
-- [ ] Full CRUD
-- [ ] Pagination + rows-per-page selector
+- [x] Full CRUD
+- [x] Pagination + rows-per-page selector
 - [ ] Detail page or modal
 - [ ] Search / filter / sort
 - [ ] At least one JOIN and one aggregate query

@@ -1,1 +1,6 @@
 @import "tailwindcss";
+
+@theme {
+  --color-navy-900: #0b1a36;
+  --color-primary: #2563eb;
+}

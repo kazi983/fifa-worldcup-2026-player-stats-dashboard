@@ -1,16 +1,188 @@
 ---
+import { API_BASE_URL } from "astro:env/server";
+import { type PageItem, getPageItems } from "../lib/pagination.ts";
+import Layout from "../layouts/Layout.astro";
+const LIMIT_OPTIONS = [10, 25, 50, 100];
+const POSITIONS = ["Goalkeeper", "Defender", "Midfielder", "Forward"];
+const STAGES = [
+  "Third Place Match",
+  "Quarter Finals",
+  "Final",
+  "Semi Finals",
+  "Round of 16",
+  "Round of 32",
+];
+
+// type Performance = {
+//   id: string;
+//   player_name: string;
+//   team: string;
+//   jersey_number: number;
+//   position: string;
+//   match_date: string;
+//   opponent_team: string;
+//   minutes_played: number;
+//   goals: number;
+//   assists: number;
+//   shots: number;
+//   pass_accuracy: number;
+//   player_rating: number;
+// };
+
+// type PerformanceData = {
+//   data: Performance[];
+//   page: number;
+//   limit: number;
+//   total: number;
+//   totalPages: number;
+// };
+
+function pageHref(page: number) {
+  const params = new URLSearchParams(Astro.url.searchParams);
+  params.set("page", String(page));
+  return `?${params}`;
+}
+
+// let data;
+let currentPage;
+let limit;
+let total;
+let totalPages;
+let teams: string[] = [];
+
+let pageItems: PageItem[] = [];
+
+await Promise.all([
+  fetch(`${API_BASE_URL}/api/performances${Astro.url.search}`)
+    .then((res) => {
+      if (!res.ok) {
+        throw new Error(`HTTP error! Status: ${res.status}`);
+      }
+      return res.json();
+    })
+    .then((parsed) => {
+      currentPage = parsed.page;
+      limit = parsed.limit;
+      total = parsed.total;
+      totalPages = parsed.totalPages;
+      pageItems = getPageItems(currentPage, totalPages);
+    })
+    .catch((error) => {
+      console.error("Error fetching performances data:", error);
+    }),
+  fetch(`${API_BASE_URL}/api/teams`)
+    .then((res) => {
+      if (!res.ok) {
+        throw new Error(`HTTP error! Status: ${res.status}`);
+      }
+      return res.json();
+    })
+    .then((parsed) => {
+      teams = parsed;
+    })
+    .catch((error) => {
+      console.error("Error fetching teams data:", error);
+    }),
+]);
+
+const selectedTeam = Astro.url.searchParams.get("team");
+const selectedStage = Astro.url.searchParams.get("stage");
+const selectedPosition = Astro.url.searchParams.get("position");
 ---
 
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="icon" href="/favicon.ico" />
-    <meta name="viewport" content="width=device-width" />
-    <meta name="generator" content={Astro.generator} />
-    <title>Astro</title>
-  </head>
-  <body>
-    <h1>Astro</h1>
-  </body>
-</html>
+<Layout title="Player Performances">
+  <header>
+    <h1>Player Performances</h1>
+    <from>
+      <label for="q" class="sr-only">
+        Search players
+      </label>
+      <input
+        type="text"
+        name="q"
+        id="searchPlayer"
+        placeholder="Search players..."
+      />
+      <details>
+        <summary>Filter</summary>
+        <div>
+          <label for="team">Team</label>
+          <select id="team" name="team">
+            <option value="">All teams</option>
+            {teams.map((team) => (
+              <option value={team} selected={team === selectedTeam}>
+                {team}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label for="position">Position</label>
+          <select id="position" name="position">
+            <option value="">All positions</option>
+            {POSITIONS.map((position) => (
+              <option value={position} selected={position === selectedPosition}>
+                {position}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label for="stage">Stage</label>
+          <select id="stage" name="stage">
+            <option value="">All stages</option>
+            {STAGES.map((stage) => (
+              <option value={stage} selected={stage === selectedStage}>
+                {stage}
+              </option>
+            ))}
+          </select>
+        </div>
+      </details>
+    </from>
+  </header>
+  <div>
+    Show
+    <select name="limit" id="limit">
+      {LIMIT_OPTIONS.map((limit) => (
+        <option
+          value={limit}
+          selected={limit === Astro.url.searchParams.get("limit")}
+        >
+          {limit}
+        </option>
+      ))}
+    </select>
+    entries
+  </div>
+  <div>
+    {(currentPage - 1) * limit + 1} -
+    {currentPage === totalPages ? total : currentPage * limit}
+    of {total}
+    <nav aria-label="Pagination">
+      <span>←</span>
+      <ul class="flex gap-1">
+        {pageItems.map((page) => (
+          <li>
+            {page === "…" ? (
+              "…"
+            ) : (
+              <a
+                class="aria-[current=page]:bg-blue-200 border rounded-sm"
+                aria-current={page === currentPage ? "page" : undefined}
+                href={pageHref(page)}
+              >
+                {page}
+              </a>
+            )}
+          </li>
+        ))}
+      </ul>
+      <span>→</span>
+    </nav>
+    <table>
+      <thead></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</Layout>
