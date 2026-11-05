@@ -255,12 +255,14 @@ export function performancesRouter() {
     const params = [];
     const set = [];
     for (const column of updateColumns) {
-      const raw = req.query[column];
-      const value = typeof raw === "string" ? raw.trim() : "";
-      if (value !== "") {
+      const value = req.body?.[column];
+      if (typeof value === "number" && Number.isFinite(value)) {
         params.push(value);
         set.push(`${column} = $${params.length}`);
       }
+    }
+    if (set.length === 0) {
+      return res.status(400).json({ error: "no columns to update" });
     }
     const setSql = set.length > 0 ? `SET ${set.join(", ")}` : "";
 
