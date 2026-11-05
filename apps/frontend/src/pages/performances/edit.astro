@@ -1,0 +1,410 @@
+---
+import { API_BASE_URL } from "astro:env/server";
+import Layout from "../../layouts/Layout.astro";
+import Trash from "@lucide/astro/icons/trash";
+import ArrowLeft from "@lucide/astro/icons/arrow-left";
+import Whistle from "@lucide/astro/icons/whistle";
+import MapPin from "@lucide/astro/icons/map-pin";
+import Calendar from "@lucide/astro/icons/calendar-days";
+import Trophy from "@lucide/astro/icons/trophy";
+import Target from "@lucide/astro/icons/target";
+import Shield from "@lucide/astro/icons/shield-half";
+import Physical from "@lucide/astro/icons/sport-shoe";
+import Star from "@lucide/astro/icons/star";
+import Hand from "@lucide/astro/icons/hand";
+import {
+  calcRatings,
+  ratingClass,
+  RATING_INPUT_KEYS,
+  type RatingInput,
+  type Ratings,
+} from "../../lib/ratings.ts";
+
+type Performance = {
+  id: number;
+  player_name: string;
+  jersey_number: number;
+  position: string;
+  team: string;
+  match_date: string;
+  stadium: string;
+  opponent_team: string;
+  match_result: string;
+  goals_team: number;
+  goals_opponent: number;
+  minutes_played: number;
+  goals: number;
+  assists: number;
+  shots: number;
+  shots_on_target: number;
+  expected_goals_xg: number;
+  expected_assists_xa: number;
+  key_passes: number;
+  successful_passes: number;
+  total_passes: number;
+  pass_accuracy: number;
+  dribbles_attempted: number;
+  successful_dribbles: number;
+  crosses: number;
+  successful_crosses: number;
+  tackles: number;
+  interceptions: number;
+  clearances: number;
+  blocks: number;
+  aerial_duels_won: number;
+  aerial_duels_lost: number;
+  recoveries: number;
+  defensive_actions: number;
+  fouls_committed: number;
+  fouls_suffered: number;
+  yellow_cards: number;
+  red_cards: number;
+  offsides: number;
+  saves: number;
+  save_percentage: number;
+  punches: number;
+  clean_sheet: number;
+  goals_conceded: number;
+  penalty_saves: number;
+  distance_covered_km: number;
+  sprint_distance_km: number;
+  top_speed_kmh: number;
+  accelerations: number;
+  decelerations: number;
+  stamina_score: number;
+  player_rating: number;
+  performance_score: number;
+  offensive_contribution: number;
+  defensive_contribution: number;
+  possession_impact: number;
+  pressure_resistance: number;
+  creativity_score: number;
+  consistency_score: number;
+  clutch_performance_score: number;
+};
+type Column = {
+  key: keyof Performance;
+  label: string;
+  step?: number;
+  max?: number;
+};
+type Section = {
+  title: string;
+  icon: typeof Target;
+  columns: Column[];
+  goalkeeperOnly?: boolean;
+};
+
+const ATTACKING_ITEMS: Column[] = [
+  { key: "goals", label: "Goals" },
+  { key: "assists", label: "Assists" },
+  { key: "shots", label: "Shots" },
+  { key: "shots_on_target", label: "Shots on Target" },
+  { key: "key_passes", label: "Key Passes" },
+  { key: "successful_dribbles", label: "Successful Dribbles" },
+  { key: "successful_crosses", label: "Crosses (Acc.)" },
+];
+const DEFENSIVE_ITEMS: Column[] = [
+  { key: "tackles", label: "Tackles" },
+  { key: "interceptions", label: "Interceptions" },
+  { key: "blocks", label: "Blocks" },
+  { key: "clearances", label: "Clearances" },
+  { key: "aerial_duels_won", label: "Aerial Duels Won" },
+  { key: "aerial_duels_lost", label: "Aerial Duels Lost" },
+  { key: "fouls_committed", label: "Fouls Committed" },
+  { key: "fouls_suffered", label: "Fouls Drawn" },
+];
+const PHYSICAL_ITEMS: Column[] = [
+  { key: "minutes_played", label: "Minutes Played" },
+  { key: "distance_covered_km", label: "Distance (km)", step: 0.1 },
+  { key: "sprint_distance_km", label: "Sprint Dist. (km)", step: 0.1 },
+  { key: "top_speed_kmh", label: "Top Speed (km/h)", step: 0.1 },
+  { key: "accelerations", label: "Accelerations" },
+  { key: "decelerations", label: "Decelerations" },
+  { key: "stamina_score", label: "Stamina (0–100)", step: 0.1 },
+];
+const GOALKEEPING_ITEMS: Column[] = [
+  { key: "saves", label: "Saves" },
+  { key: "save_percentage", label: "Save Ratio (0–1)", step: 0.01, max: 1 },
+  { key: "punches", label: "Punches" },
+  { key: "penalty_saves", label: "Penalty Saves" },
+  { key: "clean_sheet", label: "Clean Sheet (0/1)", max: 1 },
+  { key: "goals_conceded", label: "Goals Conceded" },
+];
+const RATINGS_ITEMS: {
+  key: keyof Ratings;
+  label: string;
+  goalkeeperOnly?: boolean;
+}[] = [
+  { key: "match", label: "Match Rating" },
+  { key: "attacking", label: "Attacking" },
+  { key: "defensive", label: "Defensive" },
+  { key: "physical", label: "Physical" },
+  { key: "discipline", label: "Discipline" },
+  { key: "goalkeeping", label: "Goalkeeping", goalkeeperOnly: true },
+];
+const RATING_BOX_CLASS =
+  "block px-3 py-2 border rounded-md font-semibold tabular-nums text-center";
+const SECTIONS: Section[] = [
+  { title: "Attacking", icon: Target, columns: ATTACKING_ITEMS },
+  { title: "Defensive", icon: Shield, columns: DEFENSIVE_ITEMS },
+  { title: "Physical", icon: Physical, columns: PHYSICAL_ITEMS },
+  {
+    title: "Goalkeeping",
+    icon: Hand,
+    columns: GOALKEEPING_ITEMS,
+    goalkeeperOnly: true,
+  },
+];
+
+const RESULT_CLASSES: Record<string, string> = {
+  W: "bg-rating-good-bg text-rating-good",
+  D: "bg-rating-mid-bg text-rating-mid",
+  L: "bg-rating-bad-bg text-rating-bad",
+};
+
+const id = Astro.url.searchParams.get("id") ?? "";
+let performance = null as Performance | null;
+// An empty id would request `/api/performances/`, which is the list endpoint
+if (id !== "") {
+  await fetch(`${API_BASE_URL}/api/performances/${encodeURIComponent(id)}`)
+    .then((res) => {
+      if (!res.ok) {
+        throw new Error(`HTTP error! Status: ${res.status}`);
+      }
+      return res.json();
+    })
+    .then((parsed) => {
+      performance = parsed;
+    })
+    .catch((error) => {
+      console.error("Error fetching performance data:", error);
+    });
+}
+
+const initials = performance
+  ? performance.player_name
+      .split(" ")
+      .map((word) => word[0])
+      .join("")
+      .slice(0, 2)
+  : "";
+// Goalkeeper stats are 0 for every outfield player, so their inputs are hidden
+const isGoalkeeper = performance?.position === "Goalkeeper";
+const ratings = performance
+  ? calcRatings(
+      Object.fromEntries(
+        RATING_INPUT_KEYS.map((key) => [key, Number(performance![key])]),
+      ) as RatingInput,
+      performance.position,
+    )
+  : null;
+---
+
+<Layout title="Edit Performance">
+  <a
+    href="/"
+    class="inline-flex items-center gap-2 mb-2 py-1 rounded-sm text-primary hover:underline"
+  >
+    <ArrowLeft class="size-4" />
+    <span>Back to Performances</span>
+  </a>
+
+  {performance === null ? (
+    <p class="bg-white py-12 border border-slate-200 rounded-lg text-slate-500 text-center">
+      Performance not found
+    </p>
+  ) : (
+    <form
+      method="post"
+      id="performance-form"
+      data-position={performance.position}
+      class="flex flex-col gap-4"
+    >
+      <header class="flex justify-between items-center gap-4">
+        <h1 class="font-bold text-2xl lg:text-3xl">Edit Performance</h1>
+        <button
+          type="submit"
+          name="intent"
+          value="delete"
+          formnovalidate
+          class="flex items-center gap-2 bg-white hover:bg-rating-bad-bg px-4 py-2 border border-danger rounded-md text-danger cursor-pointer"
+        >
+          <Trash class="size-5" />
+          <span class="sr-only sm:not-sr-only">Delete</span>
+        </button>
+      </header>
+
+      <section class="flex md:flex-row flex-col gap-5 bg-white p-5 border border-slate-200 rounded-lg">
+        <div class="flex items-center gap-4 md:pr-8 md:border-slate-200 md:border-r">
+          <span
+            aria-hidden="true"
+            class="flex justify-center items-center bg-primary/60 rounded-full size-15 font-bold text-white text-2xl shrink-0"
+          >
+            {initials}
+          </span>
+          <div>
+            <p class="font-bold text-xl">{performance.player_name}</p>
+            <p class="text-slate-500">
+              #{performance.jersey_number} • {performance.position}
+            </p>
+            <p>{performance.team}</p>
+          </div>
+        </div>
+        <dl class="flex-1 gap-4 grid grid-cols-1 sm:grid-cols-2">
+          <div class="flex items-center gap-3">
+            <Whistle class="size-6 text-slate-500 shrink-0" />
+            <div>
+              <dt class="text-slate-500 text-sm">Match</dt>
+              <dd class="font-medium">
+                {performance.team} vs {performance.opponent_team}
+              </dd>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <MapPin class="size-6 text-slate-500 shrink-0" />
+            <div>
+              <dt class="text-slate-500 text-sm">Stadium</dt>
+              <dd class="font-medium">{performance.stadium}</dd>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <Calendar class="size-6 text-slate-500 shrink-0" />
+            <div>
+              <dt class="text-slate-500 text-sm">Date</dt>
+              <dd class="font-medium">{performance.match_date}</dd>
+            </div>
+          </div>
+          <div class="flex items-center gap-3">
+            <Trophy class="size-6 text-slate-500 shrink-0" />
+            <div>
+              <dt class="text-slate-500 text-sm">Result</dt>
+              <dd>
+                <span
+                  class:list={[
+                    "inline-block px-2 py-0.5 rounded-md font-semibold tabular-nums",
+                    RESULT_CLASSES[performance.match_result],
+                  ]}
+                >
+                  {`${performance.match_result} ${performance.goals_team}-${performance.goals_opponent}`}
+                </span>
+              </dd>
+            </div>
+          </div>
+        </dl>
+      </section>
+
+      <div class="gap-4 grid lg:grid-cols-2">
+        {SECTIONS.filter(
+          ({ goalkeeperOnly }) => !goalkeeperOnly || isGoalkeeper,
+        ).map(({ title, icon: Icon, columns }) => (
+          <fieldset class="bg-white p-5 border border-slate-200 rounded-lg">
+            <legend class="float-left flex items-center gap-2 mb-4 w-full font-semibold text-lg">
+              <Icon class="size-6 text-primary" />
+              {title}
+            </legend>
+            <div class="clear-left gap-x-4 gap-y-3 grid grid-cols-[repeat(auto-fill,minmax(8rem,1fr))]">
+              {columns.map(({ key, label, step, max }) => (
+                <div class="flex flex-col gap-1">
+                  <label for={key} class="text-slate-600 text-sm">
+                    {label}
+                  </label>
+                  <input
+                    type="number"
+                    id={key}
+                    name={key}
+                    value={performance![key]}
+                    min="0"
+                    max={max}
+                    step={step ?? 1}
+                    class="bg-white px-3 py-2 border border-slate-300 rounded-md w-full tabular-nums [&::-webkit-inner-spin-button]:opacity-100"
+                  />
+                </div>
+              ))}
+            </div>
+          </fieldset>
+        ))}
+        <section class="bg-white p-5 border border-slate-200 rounded-lg">
+          <h2 class="flex items-center gap-2 mb-4 font-semibold text-lg">
+            <Star class="size-6 text-primary" />
+            Ratings (1–10)
+          </h2>
+          <dl class="gap-x-4 gap-y-3 grid grid-cols-[repeat(auto-fill,minmax(8rem,1fr))]">
+            {RATINGS_ITEMS.filter(
+              ({ goalkeeperOnly }) => !goalkeeperOnly || isGoalkeeper,
+            ).map(({ key, label }) => (
+              <div class="flex flex-col gap-1">
+                <dt class="text-slate-600 text-sm">{label}</dt>
+                <dd>
+                  <output
+                    data-rating={key}
+                    data-base={RATING_BOX_CLASS}
+                    class:list={[
+                      RATING_BOX_CLASS,
+                      ratingClass(ratings?.[key] ?? null),
+                    ]}
+                  >
+                    {ratings?.[key].toFixed(1) ?? "–"}
+                  </output>
+                </dd>
+              </div>
+            ))}
+          </dl>
+          <p class="mt-3 text-slate-500 text-xs">
+            Calculated from the stats above. Not saved.
+          </p>
+        </section>
+      </div>
+
+      <div class="flex justify-end gap-3 bg-white p-4 border border-slate-200 rounded-lg">
+        <a
+          href="/"
+          class="hover:bg-slate-50 px-6 py-2 border border-slate-300 rounded-md"
+        >
+          Cancel
+        </a>
+        <button
+          type="submit"
+          name="intent"
+          value="update"
+          class="bg-primary hover:bg-primary-hover px-6 py-2 rounded-md text-white cursor-pointer"
+        >
+          Update Performance
+        </button>
+      </div>
+    </form>
+  )}
+</Layout>
+
+<script>
+  import {
+    calcRatings,
+    ratingClass,
+    RATING_INPUT_KEYS,
+    type RatingInput,
+    type Ratings,
+  } from "../../lib/ratings.ts";
+
+  const form = document.querySelector<HTMLFormElement>("#performance-form");
+
+  // Recompute the ratings whenever a stat input changes
+  form?.addEventListener("input", () => {
+    const input = Object.fromEntries(
+      RATING_INPUT_KEYS.map((key) => {
+        // Goalkeeper inputs are not rendered for outfield players
+        const field = form.elements.namedItem(key) as HTMLInputElement | null;
+        return [key, Number(field?.value ?? 0)];
+      }),
+    ) as RatingInput;
+    const ratings = calcRatings(input, form.dataset.position ?? "");
+
+    form
+      .querySelectorAll<HTMLOutputElement>("output[data-rating]")
+      .forEach((output) => {
+        const key = output.dataset.rating as keyof Ratings;
+        const value = ratings?.[key] ?? null;
+        output.textContent = value?.toFixed(1) ?? "–";
+        output.className = `${output.dataset.base} ${ratingClass(value)}`;
+      });
+  });
+</script>
