@@ -15,7 +15,7 @@ export function rankingsRouter() {
     const sort = SORT_OPTIONS.includes(sortParam) ? sortParam : "goals";
 
     const { rows } = await pool.query(
-      `WITH stats AS (
+      `WITH player_stats AS (
         SELECT
           pl.player_id,
           pl.player_name,
@@ -41,17 +41,17 @@ export function rankingsRouter() {
         GROUP BY
           pl.player_id
       ),
-      ranks AS (
+      ranked_players AS (
         SELECT
           RANK() OVER (ORDER BY ${sort} DESC NULLS LAST)::int AS rank,
-          stats.*
+          player_stats.*
         FROM
-          stats
+          player_stats
       )
       SELECT
-        ranks.*
+        ranked_players.*
       FROM 
-        ranks
+        ranked_players
       WHERE
         rank <= 10
       ORDER BY
