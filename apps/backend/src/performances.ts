@@ -247,8 +247,6 @@ export function performancesRouter() {
   });
 
   router.patch("/:id", async (req, res) => {
-    console.log("req.body :>> ", req.body);
-
     const idParam = Number(req.params.id);
     const id = Number.isInteger(idParam) ? idParam : 0;
 
