@@ -2,6 +2,7 @@ import express from "express";
 import { pool } from "./db.ts";
 import { crudRouter } from "./crud.ts";
 import { performancesRouter } from "./performances.ts";
+import { rankingsRouter } from "./rankings.ts";
 
 export const app = express();
 
@@ -28,6 +29,12 @@ app.get("/api/teams", async (_req, res) => {
   );
   return res.json(rows.map((r) => r.team));
 });
+
+// ==========================================================================
+// Read rankings
+// ==========================================================================
+
+app.use("/api/rankings", rankingsRouter());
 
 // ==========================================================================
 // CRUD Players
