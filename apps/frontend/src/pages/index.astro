@@ -355,13 +355,17 @@ const selectedOrder =
           </tr>
         ) : (
           data.map((p) => (
-            <tr class="hover:bg-slate-50">
+            <tr class="relative hover:bg-slate-50 focus-within:bg-slate-50">
               <th scope="row" class="px-4 py-3 text-left whitespace-nowrap">
-                <span></span>
-                <div>
-                  <p>{p.player_name}</p>
-                  <p>#{p.jersey_number}</p>
-                </div>
+                <a
+                  href={`/performances/edit?id=${encodeURIComponent(p.id)}`}
+                  class="after:absolute after:inset-0 focus-visible:outline-none"
+                >
+                  <div>
+                    <p>{p.player_name}</p>
+                    <p>#{p.jersey_number}</p>
+                  </div>
+                </a>
               </th>
               <td class="px-3 py-3 text-left whitespace-nowrap">{p.team}</td>
               <td class="px-3 py-3 text-left whitespace-nowrap">
