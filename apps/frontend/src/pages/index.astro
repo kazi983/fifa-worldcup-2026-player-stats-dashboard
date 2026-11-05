@@ -9,9 +9,9 @@ import ChevronRight from "@lucide/astro/icons/chevron-right";
 import ChevronLeft from "@lucide/astro/icons/chevron-left";
 import ChevronUp from "@lucide/astro/icons/chevron-up";
 import ChevronDown from "@lucide/astro/icons/chevron-down";
+import ChevronsUpDown from "@lucide/astro/icons/chevrons-up-down";
 
 const LIMIT_OPTIONS = [10, 25, 50, 100];
-const POSITIONS = ["Goalkeeper", "Defender", "Midfielder", "Forward"];
 const STAGES = [
   "Third Place Match",
   "Quarter Finals",
@@ -19,6 +19,16 @@ const STAGES = [
   "Semi Finals",
   "Round of 16",
   "Round of 32",
+];
+type Position = {
+  full_name: string;
+  short_name: string;
+};
+const POSITIONS: Position[] = [
+  { full_name: "Goalkeeper", short_name: "GK" },
+  { full_name: "Defender", short_name: "DF" },
+  { full_name: "Midfielder", short_name: "MF" },
+  { full_name: "Forward", short_name: "FW" },
 ];
 
 type Performance = {
@@ -51,7 +61,15 @@ type Column = {
 const COLUMNS: Column[] = [
   { key: "player_name", label: "Player" },
   { key: "team", label: "Team" },
+  { key: "opponent_team", label: "Opponent" },
+  { key: "match_date", label: "Match Date" },
+  { key: "position", label: "Position" },
+  { key: "minutes_played", label: "Min" },
   { key: "goals", label: "Goals" },
+  { key: "assists", label: "Assists" },
+  { key: "shots", label: "Shots" },
+  { key: "pass_accuracy", label: "Pass Accuracy" },
+  { key: "player_rating", label: "Rating" },
 ];
 
 function pageHref(page: number) {
@@ -63,10 +81,10 @@ function pageHref(page: number) {
 function sortHref(sortColumn: string) {
   const params = new URLSearchParams(Astro.url.searchParams);
   params.set("sort", String(sortColumn));
-  if (selectedSort === sortColumn && selectedOrder === "desc") {
-    params.set("order", String("asc"));
+  if (selectedSort === sortColumn && selectedOrder === "asc") {
+    params.set("order", "desc");
   } else {
-    params.set("order", String("desc"));
+    params.set("order", "asc");
   }
   return `?${params}`;
 }
@@ -173,12 +191,12 @@ const selectedOrder =
               class="bg-white py-2 pr-3 pl-2 border border-slate-200 rounded-md w-full"
             >
               <option value="">All positions</option>
-              {POSITIONS.map((position) => (
+              {POSITIONS.map(({ full_name, short_name }) => (
                 <option
-                  value={position}
-                  selected={position === selectedPosition}
+                  value={full_name}
+                  selected={full_name === selectedPosition}
                 >
-                  {position}
+                  {short_name}
                 </option>
               ))}
             </select>
@@ -289,49 +307,113 @@ const selectedOrder =
     </div>
   </div>
 
-  <table>
-    <caption class="sr-only">Player performances</caption>
-    <thead>
-      <tr>
-        {COLUMNS.map(({ key, label }) => (
-          <th
-            scope="col"
-            aria-sort={
-              selectedSort === key
-                ? selectedOrder === "desc"
-                  ? "descending"
-                  : "ascending"
-                : undefined
-            }
-          >
-            <a href={sortHref(key)} class="flex justify-between">
-              {label}
-              {selectedSort === key && selectedOrder === "desc" ? (
-                <ChevronUp />
-              ) : (
-                <ChevronDown />
-              )}
-            </a>
-          </th>
-        ))}
-      </tr>
-    </thead>
-    <tbody>
-      {data.length === 0 ? (
+  <div class="bg-white border border-slate-200 rounded-lg overflow-x-auto">
+    <table class="w-full text-sm">
+      <caption class="sr-only">Player performances</caption>
+      <thead class="bg-slate-50 border-slate-200 border-b-2 text-slate-500 text-xs">
         <tr>
-          <td>No performances found</td>
-        </tr>
-      ) : (
-        data.map((p) => (
-          <tr>
-            <th scope="row" class="text-left">
-              {p.player_name}
+          {COLUMNS.map(({ key, label }) => (
+            <th
+              scope="col"
+              aria-sort={
+                selectedSort === key
+                  ? selectedOrder === "desc"
+                    ? "descending"
+                    : "ascending"
+                  : undefined
+              }
+              class="text-left whitespace-nowrap"
+            >
+              <a
+                href={sortHref(key)}
+                class="flex items-center gap-1 hover:bg-slate-100 px-3 py-3"
+              >
+                <span>{label}</span>
+                {selectedSort === key ? (
+                  selectedOrder === "asc" ? (
+                    <ChevronUp class="size-3 text-slate-400" />
+                  ) : (
+                    <ChevronDown class="size-3 text-slate-400" />
+                  )
+                ) : (
+                  <ChevronsUpDown class="size-3 text-slate-400" />
+                )}
+              </a>
             </th>
-            <td>{p.team}</td>
-            <td class="tabular-nums">{p.goals}</td>
+          ))}
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {data.length === 0 ? (
+          <tr>
+            <td
+              colspan={COLUMNS.length}
+              class="py-12 text-slate-500 text-center"
+            >
+              No performances found
+            </td>
           </tr>
-        ))
-      )}
-    </tbody>
-  </table>
+        ) : (
+          data.map((p) => (
+            <tr class="hover:bg-slate-50">
+              <th scope="row" class="px-4 py-3 text-left whitespace-nowrap">
+                <span></span>
+                <div>
+                  <p>{p.player_name}</p>
+                  <p>#{p.jersey_number}</p>
+                </div>
+              </th>
+              <td class="px-3 py-3 text-left whitespace-nowrap">{p.team}</td>
+              <td class="px-3 py-3 text-left whitespace-nowrap">
+                {p.opponent_team}
+              </td>
+              <td class="px-3 py-3 text-left whitespace-nowrap">
+                {Intl.DateTimeFormat("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                }).format(new Date(p.match_date))}
+              </td>
+              <td class="px-3 py-3 text-center whitespace-nowrap">
+                {
+                  POSITIONS.find(
+                    (position) => position.full_name === p.position,
+                  )?.short_name
+                }
+              </td>
+              <td class="px-3 py-3 tabular-nums text-center whitespace-nowrap">
+                {p.minutes_played}
+              </td>
+              <td class="px-3 py-3 tabular-nums text-center whitespace-nowrap">
+                {p.goals}
+              </td>
+              <td class="px-3 py-3 tabular-nums text-center whitespace-nowrap">
+                {p.assists}
+              </td>
+              <td class="px-3 py-3 tabular-nums text-center whitespace-nowrap">
+                {p.shots}
+              </td>
+              <td class="px-3 py-3 tabular-nums text-center whitespace-nowrap">
+                {p.pass_accuracy * 100}%
+              </td>
+              <td class="px-3 py-3 tabular-nums text-center whitespace-nowrap">
+                <span
+                  class:list={[
+                    "inline-block px-2 py-0.5 rounded-md font-medium",
+                    p.player_rating >= 7
+                      ? "bg-rating-good-bg text-rating-good"
+                      : p.player_rating >= 6
+                        ? "bg-rating-mid-bg text-rating-mid"
+                        : "bg-rating-bad-bg text-rating-bad",
+                  ]}
+                >
+                  {Number(p.player_rating).toFixed(1)}
+                </span>
+              </td>
+            </tr>
+          ))
+        )}
+      </tbody>
+    </table>
+  </div>
 </Layout>
