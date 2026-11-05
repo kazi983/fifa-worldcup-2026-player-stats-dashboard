@@ -4,7 +4,6 @@ import { getPageItems } from "../lib/pagination.ts";
 import Layout from "../layouts/Layout.astro";
 import Search from "@lucide/astro/icons/search";
 import Funnel from "@lucide/astro/icons/funnel";
-import Plus from "@lucide/astro/icons/plus";
 import ChevronRight from "@lucide/astro/icons/chevron-right";
 import ChevronLeft from "@lucide/astro/icons/chevron-left";
 import ChevronUp from "@lucide/astro/icons/chevron-up";
@@ -231,14 +230,6 @@ const selectedOrder =
         </>
       )}
     </form>
-
-    <a
-      href="/performances/new"
-      class="flex items-center gap-2 bg-primary hover:bg-primary-hover ml-auto px-4 py-2 rounded-md text-white"
-    >
-      <Plus class="size-5" />
-      <span class="sr-only sm:not-sr-only">Add Performance</span>
-    </a>
   </header>
 
   <div class="flex flex-wrap justify-between items-center gap-4 py-4">
