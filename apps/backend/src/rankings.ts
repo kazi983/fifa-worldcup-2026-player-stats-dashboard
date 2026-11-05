@@ -1,11 +1,11 @@
 import express from "express";
 import { pool } from "./db.ts";
 
-const SORT_OPTIONS = ["goals", "assists", "rating"];
+const SORT_OPTIONS = ["goals", "assists", "player_rating"];
 
 /**
  * Builds the router for the JOINed ranking list
- * @returns Router to mount under `/api/ratings`.
+ * @returns Router to mount under `/api/rankings`.
  */
 export function rankingsRouter() {
   const router = express.Router();
@@ -34,7 +34,7 @@ export function rankingsRouter() {
               END
             ),
             2
-          )::float8 AS rating
+          )::float8 AS player_rating
         FROM
           players pl
           JOIN performances pf ON pf.player_id = pl.player_id

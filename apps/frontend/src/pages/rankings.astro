@@ -1,0 +1,150 @@
+---
+import { API_BASE_URL } from "astro:env/server";
+import Layout from "../layouts/Layout.astro";
+
+type Ranking = {
+  rank: number;
+  player_name: string;
+  team: string;
+  matches_played: number;
+  goals: number;
+  assists: number;
+  player_rating: number;
+};
+type Column = {
+  key: keyof Ranking;
+  label: string;
+  numeric?: boolean;
+};
+const SORT_OPTIONS: Column[] = [
+  { key: "goals", label: "Goals" },
+  { key: "assists", label: "Assists" },
+  { key: "player_rating", label: "Rating" },
+];
+const COLUMNS: Column[] = [
+  { key: "rank", label: "Rank", numeric: true },
+  { key: "player_name", label: "Player" },
+  { key: "team", label: "Team" },
+  { key: "matches_played", label: "Matches Played", numeric: true },
+  { key: "goals", label: "Goals", numeric: true },
+  { key: "assists", label: "Assists", numeric: true },
+  { key: "player_rating", label: "Rating", numeric: true },
+];
+
+let data: Ranking[] = [];
+
+const selectedSort = Astro.url.searchParams.get("sort");
+
+await Promise.all([
+  fetch(
+    `${API_BASE_URL}/api/rankings?${new URLSearchParams({ sort: selectedSort ?? "goals" })}`,
+  )
+    .then((res) => {
+      if (!res.ok) {
+        throw new Error(`HTTP error! Status: ${res.status}`);
+      }
+      return res.json();
+    })
+    .then((parsed) => {
+      data = parsed;
+    })
+    .catch((error) => {
+      console.error("Error fetching ranking data:", error);
+    }),
+]);
+---
+
+<Layout title="Rankings">
+  <header class="flex justify-between gap-4 pb-5 border-slate-200 border-b">
+    <h1 class="font-bold text-2xl lg:text-3xl">Rankings</h1>
+    <form id="filters">
+      <label class="flex items-center gap-2">
+        Sort by
+        <select
+          name="sort"
+          id="sort"
+          form="filters"
+          onchange="this.form.requestSubmit()"
+          class="bg-white py-2 pr-3 pl-2 border border-slate-200 rounded-md w-auto"
+        >
+          {SORT_OPTIONS.map(({ key, label }) => (
+            <option value={key} selected={String(key) === selectedSort}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </label>
+    </form>
+  </header>
+
+  <div class="bg-white border border-slate-200 rounded-lg overflow-x-auto">
+    <table class="w-full text-sm">
+      <caption class="sr-only">Player performances</caption>
+      <thead class="bg-slate-50 border-slate-200 border-b-2 text-slate-500 text-xs">
+        <tr>
+          {COLUMNS.map(({ label, numeric }) => (
+            <th
+              scope="col"
+              class:list={[
+                "px-3 py-3 whitespace-nowrap ",
+                numeric ? "text-center" : "text-left",
+              ]}
+            >
+              {label}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody class="divide-y divide-slate-100">
+        {data.length === 0 ? (
+          <tr>
+            <td
+              colspan={COLUMNS.length}
+              class="py-12 text-slate-500 text-center"
+            >
+              No performances found
+            </td>
+          </tr>
+        ) : (
+          data.map((p) => (
+            <tr class="hover:bg-slate-50">
+              <th scope="row" class="px-3 py-3 text-center whitespace-nowrap">
+                {p.rank}
+              </th>
+              <td class="px-3 py-3 text-left whitespace-nowrap">
+                <span></span>
+                <div>
+                  <p>{p.player_name}</p>
+                </div>
+              </td>
+              <td class="px-3 py-3 text-left whitespace-nowrap">{p.team}</td>
+              <td class="px-3 py-3 tabular-nums text-center whitespace-nowrap">
+                {p.matches_played}
+              </td>
+              <td class="px-3 py-3 tabular-nums text-center whitespace-nowrap">
+                {p.goals}
+              </td>
+              <td class="px-3 py-3 tabular-nums text-center whitespace-nowrap">
+                {p.assists}
+              </td>
+              <td class="px-3 py-3 tabular-nums text-center whitespace-nowrap">
+                <span
+                  class:list={[
+                    "inline-block px-2 py-0.5 rounded-md font-medium",
+                    p.player_rating >= 7
+                      ? "bg-rating-good-bg text-rating-good"
+                      : p.player_rating >= 6
+                        ? "bg-rating-mid-bg text-rating-mid"
+                        : "bg-rating-bad-bg text-rating-bad",
+                  ]}
+                >
+                  {Number(p.player_rating)}
+                </span>
+              </td>
+            </tr>
+          ))
+        )}
+      </tbody>
+    </table>
+  </div>
+</Layout>
