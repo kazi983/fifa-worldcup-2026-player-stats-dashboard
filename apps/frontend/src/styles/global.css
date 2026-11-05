@@ -1,6 +1,25 @@
 @import "tailwindcss";
 
 @theme {
+  /* Sidebar */
   --color-navy-900: #0b1a36;
+  --color-navy-800: #1a2a4a;
+
+  /* Page background behind the white cards */
+  --color-canvas: #f4f6fa;
+
+  /* Brand action: active nav item, primary buttons, current page */
   --color-primary: #2563eb;
+  --color-primary-hover: #1d4ed8;
+
+  /* Destructive action: Delete button */
+  --color-danger: #dc2626;
+
+  /* Rating badges: >= 7 good, >= 6 mid, else bad */
+  --color-rating-good: #15803d;
+  --color-rating-good-bg: #dcfce7;
+  --color-rating-mid: #b45309;
+  --color-rating-mid-bg: #fef3c7;
+  --color-rating-bad: #b91c1c;
+  --color-rating-bad-bg: #fee2e2;
 }

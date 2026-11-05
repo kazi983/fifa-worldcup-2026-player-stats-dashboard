@@ -1,15 +1,35 @@
-<ul>
-  <li>
-    <a href="/" aria-current={Astro.url.pathname === "/" ? "page" : undefined}>
-      Performances
-    </a>
-  </li>
-  <li>
-    <a
-      href="/rankings"
-      aria-current={Astro.url.pathname === "/rankings" ? "page" : undefined}
-    >
-      Rankings
-    </a>
-  </li>
-</ul>
+---
+import Trophy from "@lucide/astro/icons/trophy";
+import Chart from "@lucide/astro/icons/chart-column";
+---
+
+<aside class="flex flex-col gap-4 bg-navy-900 py-10 w-64 text-white shrink-0">
+  <div class="mx-4">
+    <p class="font-bold text-xl uppercase">World cup 2026</p>
+    <p class="text-slate-200 text-sm uppercase">Player performance explorer</p>
+  </div>
+  <nav aria-label="Main">
+    <ul>
+      <li class="m-2">
+        <a
+          href="/"
+          class="flex items-center gap-2 aria-[current=page]:bg-primary hover:bg-navy-800 p-2 rounded-sm"
+          aria-current={Astro.url.pathname === "/" ? "page" : undefined}
+        >
+          <Chart class="size-5" />
+          Performances
+        </a>
+      </li>
+      <li class="m-2">
+        <a
+          href="/rankings"
+          class="flex items-center gap-2 aria-[current=page]:bg-primary hover:bg-navy-800 p-2 rounded-sm"
+          aria-current={Astro.url.pathname === "/rankings" ? "page" : undefined}
+        >
+          <Trophy class="size-5" />
+          Rankings
+        </a>
+      </li>
+    </ul>
+  </nav>
+</aside>
