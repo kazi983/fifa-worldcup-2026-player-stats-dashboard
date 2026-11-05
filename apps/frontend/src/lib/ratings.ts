@@ -3,11 +3,11 @@ export const RATING_INPUT_KEYS = [
   "minutes_played",
   "goals",
   "assists",
+  "shots",
   "shots_on_target",
   "key_passes",
   "successful_dribbles",
   "successful_crosses",
-  "fouls_suffered",
   "tackles",
   "interceptions",
   "blocks",
@@ -15,9 +15,13 @@ export const RATING_INPUT_KEYS = [
   "aerial_duels_won",
   "aerial_duels_lost",
   "fouls_committed",
+  "fouls_suffered",
   "distance_covered_km",
   "sprint_distance_km",
   "top_speed_kmh",
+  "accelerations",
+  "decelerations",
+  "stamina_score",
   "saves",
   "save_percentage",
   "punches",
@@ -39,7 +43,7 @@ export type Ratings = {
 
 type Weights = Omit<Ratings, "match">;
 
-// How much each area counts toward the match rating, per position
+// How much each area counts toward the match rating, per position (sum 1)
 const POSITION_WEIGHTS: Record<string, Weights> = {
   Forward: {
     attacking: 0.5,
@@ -78,6 +82,13 @@ const DEFAULT_WEIGHTS: Weights = {
   goalkeeping: 0,
 };
 
+// Dataset averages (players with 45+ minutes). Stats added as "difference
+// from average" do not change the rating of an average player.
+const AVG_TOP_SPEED_KMH = 32;
+const AVG_ACC_DEC_PER_90 = 47;
+const AVG_STAMINA = 87;
+const AVG_SAVE_PERCENTAGE = 0.68;
+
 /**
  * Keeps a rating on the 1-10 scale and rounds it to one decimal.
  * @param value - Raw rating.
@@ -93,10 +104,13 @@ function toScale(value: number) {
  *
  * Each area starts from a base and adds or subtracts points per action.
  * The coefficients are tuned so that an average player of the dataset scores
- * about 6. Physical stats are normalized to 90 minutes. Goalkeeping only
- * counts toward the match rating of goalkeepers.
+ * about 6. Good actions only add points and bad actions (lost duels, cards,
+ * goals conceded) only subtract, so raising a good stat never lowers a rating.
+ * Physical volume stats are normalized to 90 minutes.
+ * Goalkeeping only counts toward the match rating of goalkeepers.
  * @param input - Match stats.
- * @param position - Player position, e.g. `Forward`. Unknown values weigh all areas equally.
+ * @param position - Player position, e.g. `Forward`. Unknown values weigh the
+ *   outfield areas equally.
  * @returns The ratings, or `null` when the player did not play.
  * @example
  * calcRatings({ ...stats, minutes_played: 90, goals: 1 }, "Forward");
@@ -111,9 +125,10 @@ export function calcRatings(
   const per90 = 90 / input.minutes_played;
 
   const attacking = toScale(
-    5 +
+    4.9 +
       input.goals * 1.5 +
       input.assists * 1 +
+      input.shots * 0.1 +
       input.shots_on_target * 0.4 +
       input.key_passes * 0.3 +
       input.successful_dribbles * 0.3 +
@@ -133,14 +148,18 @@ export function calcRatings(
     0.5 +
       input.distance_covered_km * per90 * 0.5 +
       input.sprint_distance_km * per90 * 0.5 +
-      (input.top_speed_kmh - 32) * 0.1,
+      (input.top_speed_kmh - AVG_TOP_SPEED_KMH) * 0.1 +
+      ((input.accelerations + input.decelerations) * per90 -
+        AVG_ACC_DEC_PER_90) *
+        0.03 +
+      (input.stamina_score - AVG_STAMINA) * 0.05,
   );
   const discipline = toScale(8 - input.fouls_committed);
-  // save_percentage is a ratio (0-1); 0.68 is the dataset average
+  // save_percentage is a ratio (0-1)
   const goalkeeping = toScale(
     5 +
       input.saves * 0.3 +
-      (input.save_percentage - 0.68) * 3 +
+      (input.save_percentage - AVG_SAVE_PERCENTAGE) * 3 +
       input.punches * 0.2 +
       input.penalty_saves * 1.5 +
       input.clean_sheet * 1.5 -
@@ -156,7 +175,14 @@ export function calcRatings(
       goalkeeping * weights.goalkeeping,
   );
 
-  return { match, attacking, defensive, physical, discipline, goalkeeping };
+  return {
+    match,
+    attacking,
+    defensive,
+    physical,
+    discipline,
+    goalkeeping,
+  };
 }
 
 /**
