@@ -1,0 +1,29 @@
+---
+import Trophy from "@lucide/astro/icons/trophy";
+import Chart from "@lucide/astro/icons/chart-column";
+---
+
+<nav aria-label="Main">
+  <ul>
+    <li class="m-2">
+      <a
+        href="/"
+        class="flex items-center gap-2 aria-[current=page]:bg-primary hover:bg-navy-800 p-2 rounded-sm"
+        aria-current={Astro.url.pathname === "/" ? "page" : undefined}
+      >
+        <Chart class="size-5" />
+        Performances
+      </a>
+    </li>
+    <li class="m-2">
+      <a
+        href="/rankings"
+        class="flex items-center gap-2 aria-[current=page]:bg-primary hover:bg-navy-800 p-2 rounded-sm"
+        aria-current={Astro.url.pathname === "/rankings" ? "page" : undefined}
+      >
+        <Trophy class="size-5" />
+        Rankings
+      </a>
+    </li>
+  </ul>
+</nav>
