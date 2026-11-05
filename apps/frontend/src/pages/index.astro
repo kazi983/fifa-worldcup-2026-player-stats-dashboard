@@ -1,7 +1,15 @@
 ---
 import { API_BASE_URL } from "astro:env/server";
-import { type PageItem, getPageItems } from "../lib/pagination.ts";
+import { getPageItems } from "../lib/pagination.ts";
 import Layout from "../layouts/Layout.astro";
+import Search from "@lucide/astro/icons/search";
+import Funnel from "@lucide/astro/icons/funnel";
+import Plus from "@lucide/astro/icons/plus";
+import ChevronRight from "@lucide/astro/icons/chevron-right";
+import ChevronLeft from "@lucide/astro/icons/chevron-left";
+import ChevronUp from "@lucide/astro/icons/chevron-up";
+import ChevronDown from "@lucide/astro/icons/chevron-down";
+
 const LIMIT_OPTIONS = [10, 25, 50, 100];
 const POSITIONS = ["Goalkeeper", "Defender", "Midfielder", "Forward"];
 const STAGES = [
@@ -13,29 +21,38 @@ const STAGES = [
   "Round of 32",
 ];
 
-// type Performance = {
-//   id: string;
-//   player_name: string;
-//   team: string;
-//   jersey_number: number;
-//   position: string;
-//   match_date: string;
-//   opponent_team: string;
-//   minutes_played: number;
-//   goals: number;
-//   assists: number;
-//   shots: number;
-//   pass_accuracy: number;
-//   player_rating: number;
-// };
+type Performance = {
+  id: string;
+  player_name: string;
+  team: string;
+  jersey_number: number;
+  position: string;
+  match_date: string;
+  opponent_team: string;
+  minutes_played: number;
+  goals: number;
+  assists: number;
+  shots: number;
+  pass_accuracy: number;
+  player_rating: number;
+};
 
-// type PerformanceData = {
-//   data: Performance[];
-//   page: number;
-//   limit: number;
-//   total: number;
-//   totalPages: number;
-// };
+type PerformanceData = {
+  data: Performance[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+};
+type Column = {
+  key: keyof Performance;
+  label: string;
+};
+const COLUMNS: Column[] = [
+  { key: "player_name", label: "Player" },
+  { key: "team", label: "Team" },
+  { key: "goals", label: "Goals" },
+];
 
 function pageHref(page: number) {
   const params = new URLSearchParams(Astro.url.searchParams);
@@ -43,15 +60,25 @@ function pageHref(page: number) {
   return `?${params}`;
 }
 
-// let data;
-let currentPage;
-let limit;
-let total;
-let totalPages;
+function sortHref(sortColumn: string) {
+  const params = new URLSearchParams(Astro.url.searchParams);
+  params.set("sort", String(sortColumn));
+  if (selectedSort === sortColumn && selectedOrder === "desc") {
+    params.set("order", String("asc"));
+  } else {
+    params.set("order", String("desc"));
+  }
+  return `?${params}`;
+}
+
+let performances: PerformanceData = {
+  data: [],
+  page: 1,
+  limit: 25,
+  total: 0,
+  totalPages: 0,
+};
 let teams: string[] = [];
-
-let pageItems: PageItem[] = [];
-
 await Promise.all([
   fetch(`${API_BASE_URL}/api/performances${Astro.url.search}`)
     .then((res) => {
@@ -61,11 +88,7 @@ await Promise.all([
       return res.json();
     })
     .then((parsed) => {
-      currentPage = parsed.page;
-      limit = parsed.limit;
-      total = parsed.total;
-      totalPages = parsed.totalPages;
-      pageItems = getPageItems(currentPage, totalPages);
+      performances = parsed;
     })
     .catch((error) => {
       console.error("Error fetching performances data:", error);
@@ -85,104 +108,230 @@ await Promise.all([
     }),
 ]);
 
+const { data, page: currentPage, limit, total, totalPages } = performances;
+const pageItems = getPageItems(currentPage, totalPages);
+const start = (currentPage - 1) * limit + 1;
+const end = Math.min(total, currentPage * limit);
+const selectedQ = Astro.url.searchParams.get("q") ?? "";
+const selectedLimit = Astro.url.searchParams.get("limit") ?? "25";
 const selectedTeam = Astro.url.searchParams.get("team");
 const selectedStage = Astro.url.searchParams.get("stage");
 const selectedPosition = Astro.url.searchParams.get("position");
+const selectedSort = Astro.url.searchParams.get("sort");
+const selectedOrder =
+  Astro.url.searchParams.get("order") === "asc" ? "asc" : "desc";
 ---
 
 <Layout title="Player Performances">
-  <header>
-    <h1>Player Performances</h1>
-    <from>
-      <label for="q" class="sr-only">
-        Search players
-      </label>
-      <input
-        type="text"
-        name="q"
-        id="searchPlayer"
-        placeholder="Search players..."
-      />
-      <details>
-        <summary>Filter</summary>
-        <div>
-          <label for="team">Team</label>
-          <select id="team" name="team">
-            <option value="">All teams</option>
-            {teams.map((team) => (
-              <option value={team} selected={team === selectedTeam}>
-                {team}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label for="position">Position</label>
-          <select id="position" name="position">
-            <option value="">All positions</option>
-            {POSITIONS.map((position) => (
-              <option value={position} selected={position === selectedPosition}>
-                {position}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label for="stage">Stage</label>
-          <select id="stage" name="stage">
-            <option value="">All stages</option>
-            {STAGES.map((stage) => (
-              <option value={stage} selected={stage === selectedStage}>
-                {stage}
-              </option>
-            ))}
-          </select>
+  <header class="flex flex-wrap items-center gap-4 pb-5 border-slate-200 border-b">
+    <h1 class="font-bold text-2xl lg:text-3xl">Player Performances</h1>
+    <form
+      id="filters"
+      class="flex lg:flex-1 gap-2 order-last lg:order-0 w-full lg:w-auto"
+    >
+      <div class="relative flex-1 lg:max-w-md">
+        <Search class="top-1/2 left-3 absolute size-5 text-slate-400 -translate-y-1/2 pointer-events-none" />
+        <label for="q" class="sr-only">
+          Search players
+        </label>
+        <input
+          type="search"
+          name="q"
+          id="q"
+          placeholder="Search players..."
+          value={selectedQ}
+          class="bg-white py-2 pr-3 pl-10 border border-slate-200 rounded-md w-full"
+        />
+      </div>
+
+      <details class="relative">
+        <summary class="[&::-webkit-details-marker]:hidden flex items-center gap-2 bg-white px-3 py-2 border border-slate-200 rounded-md cursor-pointer list-none">
+          <Funnel class="size-5" />
+          <span class="sr-only sm:not-sr-only">Filters</span>
+        </summary>
+        <div class="right-0 z-10 absolute flex flex-col gap-3 bg-white shadow-lg mt-2 p-4 border border-slate-200 rounded-md w-64">
+          <div>
+            <label for="team">Team</label>
+            <select
+              id="team"
+              name="team"
+              class="bg-white py-2 pr-3 pl-2 border border-slate-200 rounded-md w-full"
+            >
+              <option value="">All teams</option>
+              {teams.map((team) => (
+                <option value={team} selected={team === selectedTeam}>
+                  {team}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label for="position">Position</label>
+            <select
+              id="position"
+              name="position"
+              class="bg-white py-2 pr-3 pl-2 border border-slate-200 rounded-md w-full"
+            >
+              <option value="">All positions</option>
+              {POSITIONS.map((position) => (
+                <option
+                  value={position}
+                  selected={position === selectedPosition}
+                >
+                  {position}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label for="stage">Stage</label>
+            <select
+              id="stage"
+              name="stage"
+              class="bg-white py-2 pr-3 pl-2 border border-slate-200 rounded-md w-full"
+            >
+              <option value="">All stages</option>
+              {STAGES.map((stage) => (
+                <option value={stage} selected={stage === selectedStage}>
+                  {stage}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button
+            type="submit"
+            class="bg-primary hover:bg-primary-hover py-2 rounded-md text-white"
+          >
+            Apply
+          </button>
         </div>
       </details>
-    </from>
+      {selectedSort && (
+        <>
+          <input type="hidden" name="sort" value={selectedSort} />
+          <input type="hidden" name="order" value={selectedOrder} />
+        </>
+      )}
+    </form>
+
+    <a
+      href="/performances/new"
+      class="flex items-center gap-2 bg-primary hover:bg-primary-hover ml-auto px-4 py-2 rounded-md text-white"
+    >
+      <Plus class="size-5" />
+      <span class="sr-only sm:not-sr-only">Add Performance</span>
+    </a>
   </header>
-  <div>
-    Show
-    <select name="limit" id="limit">
-      {LIMIT_OPTIONS.map((limit) => (
-        <option
-          value={limit}
-          selected={limit === Astro.url.searchParams.get("limit")}
-        >
-          {limit}
-        </option>
-      ))}
-    </select>
-    entries
-  </div>
-  <div>
-    {(currentPage - 1) * limit + 1} -
-    {currentPage === totalPages ? total : currentPage * limit}
-    of {total}
-    <nav aria-label="Pagination">
-      <span>←</span>
-      <ul class="flex gap-1">
-        {pageItems.map((page) => (
-          <li>
-            {page === "…" ? (
-              "…"
-            ) : (
-              <a
-                class="aria-[current=page]:bg-blue-200 border rounded-sm"
-                aria-current={page === currentPage ? "page" : undefined}
-                href={pageHref(page)}
-              >
-                {page}
+
+  <div class="flex flex-wrap justify-between items-center gap-4 py-4">
+    <label class="flex items-center gap-2">
+      Show
+      <select
+        name="limit"
+        id="limit"
+        form="filters"
+        onchange="this.form.requestSubmit()"
+        class="bg-white py-2 pr-3 pl-2 border border-slate-200 rounded-md w-auto"
+      >
+        {LIMIT_OPTIONS.map((opt) => (
+          <option value={opt} selected={String(opt) === selectedLimit}>
+            {opt}
+          </option>
+        ))}
+      </select>
+      entries
+    </label>
+    <div class="flex items-center gap-4">
+      <p class="text-slate-600 text-sm">
+        {total > 0 ? `${start}–${end} of ${total}` : "No results"}
+      </p>
+      <nav aria-label="Pagination" class="flex gap-2">
+        <ul class="flex gap-1">
+          <li class="flex items-center">
+            {currentPage > 1 ? (
+              <a href={pageHref(currentPage - 1)} aria-label="Previous page">
+                <ChevronLeft class="size-4" />
               </a>
+            ) : (
+              <span aria-disabled="true">
+                <ChevronLeft class="size-4 text-slate-400" />
+              </span>
             )}
           </li>
-        ))}
-      </ul>
-      <span>→</span>
-    </nav>
-    <table>
-      <thead></thead>
-      <tbody></tbody>
-    </table>
+          {pageItems.map((page) => (
+            <li>
+              {page === "…" ? (
+                "…"
+              ) : (
+                <a
+                  class="flex justify-center items-center bg-white aria-[current=page]:bg-primary hover:bg-slate-100 p-1 border border-slate-300 rounded-md min-w-8 h-8 aria-[current=page]:text-white"
+                  aria-current={page === currentPage ? "page" : undefined}
+                  href={pageHref(page)}
+                >
+                  {page}
+                </a>
+              )}
+            </li>
+          ))}
+          <li class="flex items-center">
+            {currentPage < totalPages ? (
+              <a href={pageHref(currentPage + 1)} aria-label="Next page">
+                <ChevronRight class="size-4" />
+              </a>
+            ) : (
+              <span aria-disabled="true">
+                <ChevronRight class="size-4 text-slate-400" />
+              </span>
+            )}
+          </li>
+        </ul>
+      </nav>
+    </div>
   </div>
+
+  <table>
+    <caption class="sr-only">Player performances</caption>
+    <thead>
+      <tr>
+        {COLUMNS.map(({ key, label }) => (
+          <th
+            scope="col"
+            aria-sort={
+              selectedSort === key
+                ? selectedOrder === "desc"
+                  ? "descending"
+                  : "ascending"
+                : undefined
+            }
+          >
+            <a href={sortHref(key)} class="flex justify-between">
+              {label}
+              {selectedSort === key && selectedOrder === "desc" ? (
+                <ChevronUp />
+              ) : (
+                <ChevronDown />
+              )}
+            </a>
+          </th>
+        ))}
+      </tr>
+    </thead>
+    <tbody>
+      {data.length === 0 ? (
+        <tr>
+          <td>No performances found</td>
+        </tr>
+      ) : (
+        data.map((p) => (
+          <tr>
+            <th scope="row" class="text-left">
+              {p.player_name}
+            </th>
+            <td>{p.team}</td>
+            <td class="tabular-nums">{p.goals}</td>
+          </tr>
+        ))
+      )}
+    </tbody>
+  </table>
 </Layout>
