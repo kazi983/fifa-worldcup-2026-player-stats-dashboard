@@ -46,7 +46,6 @@ type Performance = {
   pass_accuracy: number;
   player_rating: number;
 };
-
 type PerformanceData = {
   data: Performance[];
   page: number;
@@ -80,7 +79,8 @@ function pageHref(page: number) {
 
 function sortHref(sortColumn: string) {
   const params = new URLSearchParams(Astro.url.searchParams);
-  params.set("sort", String(sortColumn));
+  params.delete("page");
+  params.set("sort", sortColumn);
   if (selectedSort === sortColumn && selectedOrder === "asc") {
     params.set("order", "desc");
   } else {
@@ -322,7 +322,7 @@ const selectedOrder =
                     : "ascending"
                   : undefined
               }
-              class="text-left whitespace-nowrap"
+              class="aria-[sort]:text-slate-900 text-left whitespace-nowrap"
             >
               <a
                 href={sortHref(key)}
@@ -331,9 +331,9 @@ const selectedOrder =
                 <span>{label}</span>
                 {selectedSort === key ? (
                   selectedOrder === "asc" ? (
-                    <ChevronUp class="size-3 text-slate-400" />
+                    <ChevronUp class="size-3 text-slate-700" />
                   ) : (
-                    <ChevronDown class="size-3 text-slate-400" />
+                    <ChevronDown class="size-3 text-slate-700" />
                   )
                 ) : (
                   <ChevronsUpDown class="size-3 text-slate-400" />
