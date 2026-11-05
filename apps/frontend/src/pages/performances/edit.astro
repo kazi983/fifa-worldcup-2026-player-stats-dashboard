@@ -15,6 +15,7 @@ import Hand from "@lucide/astro/icons/hand";
 import {
   calcRatings,
   ratingClass,
+  toRatingColumns,
   RATING_INPUT_KEYS,
   type RatingInput,
   type Ratings,
@@ -165,17 +166,39 @@ const RESULT_CLASSES: Record<string, string> = {
 
 const id = Astro.url.searchParams.get("id") ?? "";
 
-if (Astro.request.method === "POST" && id !== "") {
+let performance = null as Performance | null;
+// An empty id would request `/api/performances/`, which is the list endpoint
+if (id !== "") {
+  await fetch(`${API_BASE_URL}/api/performances/${encodeURIComponent(id)}`)
+    .then((res) => {
+      if (!res.ok) {
+        throw new Error(`HTTP error! Status: ${res.status}`);
+      }
+      return res.json();
+    })
+    .then((parsed) => {
+      performance = parsed;
+    })
+    .catch((error) => {
+      console.error("Error fetching performance data:", error);
+    });
+}
+
+if (Astro.request.method === "POST" && performance !== null) {
   const formData = await Astro.request.formData();
 
   const intent = formData.get("intent"); // "update" or "delete"
   if (intent === "update") {
     // PATCH /api/performances/:id with the other fields
-    const body = Object.fromEntries(
-      [...formData]
-        .filter(([key, value]) => key !== "intent" && value !== "")
-        .map(([key, value]) => [key, Number(value)]),
-    );
+    const stats = Object.fromEntries(
+      RATING_INPUT_KEYS.map((key) => [key, Number(formData.get(key) ?? 0)]),
+    ) as RatingInput;
+    const body = {
+      ...stats,
+      defensive_actions:
+        stats.tackles + stats.interceptions + stats.clearances + stats.blocks,
+      ...toRatingColumns(calcRatings(stats, performance.position)),
+    };
     const res = await fetch(
       `${API_BASE_URL}/api/performances/${encodeURIComponent(id)}`,
       {
@@ -200,24 +223,6 @@ if (Astro.request.method === "POST" && id !== "") {
     }
     console.error("Error deleting performance:", res.status);
   }
-}
-
-let performance = null as Performance | null;
-// An empty id would request `/api/performances/`, which is the list endpoint
-if (id !== "") {
-  await fetch(`${API_BASE_URL}/api/performances/${encodeURIComponent(id)}`)
-    .then((res) => {
-      if (!res.ok) {
-        throw new Error(`HTTP error! Status: ${res.status}`);
-      }
-      return res.json();
-    })
-    .then((parsed) => {
-      performance = parsed;
-    })
-    .catch((error) => {
-      console.error("Error fetching performance data:", error);
-    });
 }
 
 const initials = performance

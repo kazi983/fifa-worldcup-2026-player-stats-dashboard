@@ -202,3 +202,20 @@ export function ratingClass(value: number | null) {
   }
   return "bg-rating-bad-bg border-rating-bad/30 text-rating-bad";
 }
+
+/**
+ * Maps the computed ratings to the DB rating columns.
+ * @param ratings - Result of `calcRatings`, or `null` when the player did not play.
+ * @returns PATCH body fields.
+ */
+export function toRatingColumns(ratings: Ratings | null) {
+  if (ratings === null) {
+    return { player_rating: 0 }; // bench rows in the DB have 0.0
+  }
+  return {
+    player_rating: ratings.match,
+    performance_score: ratings.match * 10, // 0-100 column
+    offensive_contribution: ratings.attacking * 10,
+    defensive_contribution: ratings.defensive * 10,
+  };
+}
