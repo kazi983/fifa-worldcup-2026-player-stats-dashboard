@@ -61,10 +61,10 @@ way — you'll join across these tables and explain the design in your reflectio
 - [x] Database set up with `setup_db.sql` (players / matches / performances)
 - [x] Full CRUD
 - [x] Pagination + rows-per-page selector
-- [ ] Detail page or modal
-- [ ] Search / filter / sort
-- [ ] At least one JOIN and one aggregate query
-- [ ] Parameterized queries throughout
+- [x] Detail page or modal
+- [x] Search / filter / sort
+- [x] At least one JOIN and one aggregate query
+- [x] Parameterized queries throughout
 
 ## Grading
 
