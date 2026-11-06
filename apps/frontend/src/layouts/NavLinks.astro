@@ -9,7 +9,12 @@ import Chart from "@lucide/astro/icons/chart-column";
       <a
         href="/"
         class="flex items-center gap-2 aria-[current=page]:bg-primary hover:bg-navy-800 p-2 rounded-sm"
-        aria-current={Astro.url.pathname === "/" ? "page" : undefined}
+        aria-current={
+          Astro.url.pathname === "/" ||
+          Astro.url.pathname.startsWith("/performances/")
+            ? "page"
+            : undefined
+        }
       >
         <Chart class="size-5" />
         Performances
