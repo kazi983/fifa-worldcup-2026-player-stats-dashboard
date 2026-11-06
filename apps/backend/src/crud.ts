@@ -6,10 +6,11 @@ import { LIMIT_OPTIONS, DEFAULT_LIMIT } from "./constants.ts";
 type TableConfig = {
   table: string;
   idColumn: string;
-  columns: string[];
+  createColumns: string[];
   searchColumns?: string[];
   filterColumns?: string[];
   sortColumns?: string[];
+  updateColumns?: string[];
 };
 
 /**
@@ -30,17 +31,20 @@ function pickColumns(body: unknown, columns: string[]) {
 
 /**
  * Builds list / read / create / update / delete routes for one table.
- * @param tableConfig - Table name, primary key and writable columns.
+ * @param tableConfig - Table name, primary key, and column whitelists.
+ *   `createColumns` are accepted by POST. `updateColumns` are accepted by PATCH
+ *   and default to `createColumns`. PATCH never updates `idColumn`.
  * @returns Router to mount under `/api/<table>`.
  */
 export function crudRouter(tableConfig: TableConfig) {
   const {
     table,
     idColumn,
-    columns,
+    createColumns,
     searchColumns = [],
     filterColumns = [],
     sortColumns = [],
+    updateColumns = createColumns,
   } = tableConfig;
   const router = express.Router();
 
@@ -115,7 +119,7 @@ export function crudRouter(tableConfig: TableConfig) {
   });
 
   router.post("/", async (req, res) => {
-    const { keys, values } = pickColumns(req.body, columns);
+    const { keys, values } = pickColumns(req.body, createColumns);
     if (keys.length === 0) {
       return res.status(400).json({ error: "no valid columns in body" });
     }
@@ -132,7 +136,7 @@ export function crudRouter(tableConfig: TableConfig) {
   router.patch("/:id", async (req, res) => {
     const { keys, values } = pickColumns(
       req.body,
-      columns.filter((column) => column !== idColumn),
+      updateColumns.filter((column) => column !== idColumn),
     );
     if (keys.length === 0) {
       return res.status(400).json({ error: "no valid columns in body" });
