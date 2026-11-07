@@ -1,0 +1,9 @@
+# SITE_HOST comes from .env through compose.yaml.
+# A hostname here makes Caddy get a Let's Encrypt certificate, renew it, and
+# redirect http:// to https:// automatically.
+{$SITE_HOST} {
+	encode zstd gzip
+	# Caddy sets X-Forwarded-For/Proto/Host and drops the ones a client sends,
+	# so Astro can trust them (security.allowedDomains in astro.config.mjs).
+	reverse_proxy frontend:4321
+}
