@@ -1,0 +1,76 @@
+# Production stack for the self-hosted demo. See docs/deployment/README.md.
+#
+# Only `caddy` publishes ports. Ports published by Docker bypass ufw, so the
+# backend and the database must never get a `ports:` entry.
+
+# Cap container logs so they cannot fill the 40 GB disk
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: worldcup
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # CSV + setup_db.sql, used by deploy/reset-db.sh
+      - ./docs:/docs:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d worldcup"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    logging: *logging
+
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD}@db:5432/worldcup
+    depends_on:
+      db:
+        condition: service_healthy
+    logging: *logging
+
+  frontend:
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile
+      args:
+        SITE_HOST: ${SITE_HOST:?set SITE_HOST in .env}
+    restart: unless-stopped
+    environment:
+      API_BASE_URL: http://backend:3000
+    depends_on:
+      - backend
+    logging: *logging
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      SITE_HOST: ${SITE_HOST}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      # Certificates and ACME account; losing them means re-issuing
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+    logging: *logging
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:
