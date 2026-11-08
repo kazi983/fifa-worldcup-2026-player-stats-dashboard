@@ -2,6 +2,7 @@
 #
 # Only `caddy` publishes ports. Ports published by Docker bypass ufw, so the
 # backend and the database must never get a `ports:` entry.
+name: worldcup
 
 # Cap container logs so they cannot fill the 40 GB disk
 x-logging: &logging
